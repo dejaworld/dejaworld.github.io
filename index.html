@@ -1,0 +1,307 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>DejaWorld: Scaling Action-Conditioned World Models through In-Context Dynamics Grounding</title>
+  <meta name="description" content="DejaWorld trains and adapts action-conditioned video world models through in-context dynamics grounding: it learns from heterogeneous robot data, adapts to unseen setups without parameter updates or calibration, and improves as experience accumulates.">
+  <meta property="og:title" content="DejaWorld: Scaling Action-Conditioned World Models through In-Context Dynamics Grounding">
+  <meta property="og:description" content="A world model that scales with experience at training time, at test time, and through planning.">
+  <meta property="og:url" content="https://zhengcao2004.github.io/dejaworld/">
+  <meta property="og:image" content="https://zhengcao2004.github.io/dejaworld/static/images/teaser.png">
+  <meta property="og:type" content="website">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Figtree:ital,wght@0,400;0,500;0,600;0,700;1,400;1,600&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="static/css/style.css?v=b750d6fb">
+</head>
+<body>
+
+<header class="hero" id="top">
+  <div class="wrap">
+    <h1><span class="line"><span class="mark"><span>Déjà</span>World</span>: Scaling Action-Conditioned World Models</span> <span class="line">through In-Context Dynamics Grounding</span></h1>
+    <p class="epigraph"><i>déjà vu</i> <span>/ˌdeɪʒɑː ˈvuː/</span> the feeling of having already lived through the present moment.</p>
+    <p class="authors">
+      <span class="row">
+        <span><a href="https://zhengcao2004.github.io/">Zheng Cao</a><sup>1*</sup></span>
+        <span><a href="https://yyuncong.github.io/">Yuncong Yang</a><sup>2*</sup></span>
+        <span><a href="https://jiabenchen.github.io/">Jiaben Chen</a><sup>2</sup></span>
+      </span>
+      <span class="row">
+        <span><a href="https://openreview.net/profile?id=~Kushaan_Naskar1">Kushaan Naskar</a><sup>2</sup></span>
+        <span><a href="https://haoyuzhen.com/">Haoyu Zhen</a><sup>2</sup></span>
+        <span><a href="https://people.csail.mit.edu/ganchuang/">Chuang Gan</a><sup>2</sup></span>
+      </span>
+    </p>
+    <p class="affiliations"><sup>1</sup>Zhejiang University <span class="dot">·</span> <sup>2</sup>UMass Amherst<span class="note-line"><sup>*</sup>Equal contribution</span></p>
+    <p class="links">
+      <!-- Replace href and remove class "soon" once each link exists. -->
+      <a class="button soon" aria-disabled="true">Paper <small>coming soon</small></a>
+      <a class="button soon" aria-disabled="true">arXiv <small>coming soon</small></a>
+    </p>
+  </div>
+</header>
+
+<main>
+
+<section class="film" id="film">
+  <div class="wrap">
+    <video controls playsinline preload="metadata" width="1920" height="1080" poster="static/film/poster.jpg?v=ebe8f364" src="static/film/dejaworld.mp4?v=764a881e" aria-label="A 50-second film of one prediction: a query (an anchor frame and 16 future actions), retrieval from the experience bank with a closer look at three of the retrieved chunks, the retrieved chunks arranged as context, the query and the context entering the world model, its prediction beside the ground truth, and the episode joining the bank."></video>
+  </div>
+</section>
+
+<section class="sec lead" id="claim">
+  <div class="wrap">
+    <div class="head">
+      <p class="eyebrow">Method</p>
+      <h2 class="hx">New Moments, Familiar Dynamics</h2>
+      <p class="sub">A numerical robot action has no universal visual meaning: the same command can look like leftward motion in one camera and rightward motion in another. For every new query, DejaWorld retrieves similar moments from its own past experience and uses them to predict the future, without ever seeing the query's future. No calibration, no fine-tuning, only experience.</p>
+    </div>
+
+    <div class="recall" id="recall">
+      <div class="rc-steps" role="tablist" aria-label="Steps of one prediction">
+        <button type="button" role="tab" aria-selected="true">New query</button>
+        <button type="button" role="tab" aria-selected="false">Retrieve</button>
+        <button type="button" role="tab" aria-selected="false">Read</button>
+        <button type="button" role="tab" aria-selected="false">Predict</button>
+        <button type="button" role="tab" aria-selected="false">Record</button>
+      </div>
+      <p class="rc-caption" aria-live="polite">A new query: given the current frame and the next 16 actions, predict the resulting video.</p>
+      <div class="rc-scroll"><div class="rc-stage" aria-label="One prediction of DejaWorld, step by step, on a real Franka arm putting objects into a box."></div></div>
+    </div>
+
+    <h3 class="center">Scaling along three dimensions</h3>
+    <div class="stats" aria-label="Highlights">
+      <a class="stat" href="#unseen">
+        <span class="title">Training-Time Scaling</span>
+        <span class="num">Any robot data</span>
+        <span class="what">any embodiment, camera, and action axes</span>
+      </a>
+      <a class="stat" href="#experience">
+        <span class="title">Test-Time Scaling</span>
+        <span class="num">+1.7 dB</span>
+        <span class="what">from 0 to 64 episodes, frozen weights</span>
+      </a>
+      <a class="stat" href="#planning">
+        <span class="title">World Model as a Tool</span>
+        <span class="num">43% → 51%</span>
+        <span class="what">task success in an agentic framework</span>
+      </a>
+    </div>
+  </div>
+</section>
+
+<section class="sec band" id="unseen">
+  <div class="wrap">
+    <div class="head">
+      <p class="eyebrow">Training-time scaling</p>
+      <h2 class="hx">Learning from Any Robot, Camera, and Action Convention</h2>
+      <p class="sub">One arm or two, any embodiment, any camera view, simulated or real: DejaWorld trains on all of it. Every sample even gets a random action convention, with its axes permuted and flipped, so that (<i>x</i>,&nbsp;<i>y</i>,&nbsp;<i>z</i>) may become (<i>x</i>,&nbsp;<i>z</i>,&nbsp;−<i>y</i>), and a random scale. Nothing fixed is left to memorize in the parameters, so the model must learn to adapt at inference time.</p>
+    </div>
+
+    <h3 class="first">Heterogeneous training data</h3>
+    <p class="lede">Simulated and real, single-arm and dual-arm.</p>
+    <div class="mosaic">
+      <p class="src">RoboCasa</p>
+      <figure class="tile">
+        <video muted loop playsinline preload="metadata" width="384" height="288" poster="static/videos/train_robocasa_a.jpg" src="static/videos/train_robocasa_a.mp4" aria-label="RoboCasa, Franka, sim"></video>
+      </figure>
+      <figure class="tile">
+        <video muted loop playsinline preload="metadata" width="384" height="288" poster="static/videos/train_robocasa_b.jpg" src="static/videos/train_robocasa_b.mp4" aria-label="RoboCasa, Franka, sim"></video>
+      </figure>
+      <p class="src">RoboTwin 2.0</p>
+      <figure class="tile">
+        <video muted loop playsinline preload="metadata" width="384" height="288" poster="static/videos/train_robotwin_ur5.jpg" src="static/videos/train_robotwin_ur5.mp4" aria-label="RoboTwin 2.0, dual UR5, sim"></video>
+      </figure>
+      <figure class="tile">
+        <video muted loop playsinline preload="metadata" width="384" height="288" poster="static/videos/train_robotwin_arx.jpg" src="static/videos/train_robotwin_arx.mp4" aria-label="RoboTwin 2.0, dual ARX-X5, sim"></video>
+      </figure>
+      <p class="src">DROID</p>
+      <figure class="tile">
+        <video muted loop playsinline preload="metadata" width="384" height="288" poster="static/videos/train_droid_a.jpg" src="static/videos/train_droid_a.mp4" aria-label="DROID, Franka, real"></video>
+      </figure>
+      <figure class="tile">
+        <video muted loop playsinline preload="metadata" width="384" height="288" poster="static/videos/train_droid_b.jpg" src="static/videos/train_droid_b.mp4" aria-label="DROID, Franka, real"></video>
+      </figure>
+    </div>
+
+    <h3>Zero-shot on unseen setups</h3>
+    <p class="lede">None of these recordings is in the training data. The model reads a few past interactions of the setup and predicts; each prediction is paired with its ground truth.</p>
+    <div class="wall">
+      <figure class="pair">
+        <figcaption><b>Franka, simulation</b> · LIBERO-Pro2.0</figcaption>
+        <div class="pair-video">
+          <span class="badge">Ground truth</span><span class="badge right">Prediction</span>
+          <video muted loop playsinline preload="metadata" width="776" height="288" poster="static/videos/gallery_libero_mug.jpg" src="static/videos/gallery_libero_mug.mp4"></video>
+        </div>
+      </figure>
+      <figure class="pair">
+        <figcaption><b>Franka, real</b> · AnchorZ</figcaption>
+        <div class="pair-video">
+          <span class="badge">Ground truth</span><span class="badge right">Prediction</span>
+          <video muted loop playsinline preload="metadata" width="776" height="288" poster="static/videos/gallery_anchorz_stack.jpg" src="static/videos/gallery_anchorz_stack.mp4"></video>
+        </div>
+      </figure>
+      <figure class="pair">
+        <figcaption><b>Franka, simulation</b> · ManiSkill</figcaption>
+        <div class="pair-video">
+          <span class="badge">Ground truth</span><span class="badge right">Prediction</span>
+          <video muted loop playsinline preload="metadata" width="776" height="288" poster="static/videos/gallery_maniskill_peg.jpg" src="static/videos/gallery_maniskill_peg.mp4"></video>
+        </div>
+      </figure>
+      <figure class="pair">
+        <figcaption><b>Dual DOS-W1, real</b> · Table30v2</figcaption>
+        <div class="pair-video">
+          <span class="badge">Ground truth</span><span class="badge right">Prediction</span>
+          <video muted loop playsinline preload="metadata" width="776" height="288" poster="static/videos/gallery_dosw1_lift13.jpg" src="static/videos/gallery_dosw1_lift13.mp4"></video>
+        </div>
+      </figure>
+      <figure class="pair">
+        <figcaption><b>Dual YAM, real</b> · RoboDojo tasks</figcaption>
+        <div class="pair-video">
+          <span class="badge">Ground truth</span><span class="badge right">Prediction</span>
+          <video muted loop playsinline preload="metadata" width="776" height="288" poster="static/videos/gallery_yam_push13.jpg" src="static/videos/gallery_yam_push13.mp4"></video>
+        </div>
+      </figure>
+      <figure class="pair">
+        <figcaption><b>Dual ARX X5, real</b> · RoboDojo</figcaption>
+        <div class="pair-video">
+          <span class="badge">Ground truth</span><span class="badge right">Prediction</span>
+          <video muted loop playsinline preload="metadata" width="776" height="288" poster="static/videos/gallery_robodojo_bowl.jpg" src="static/videos/gallery_robodojo_bowl.mp4"></video>
+        </div>
+      </figure>
+    </div>
+
+    <details class="more">
+      <summary>Results: comparison with baselines</summary>
+    <div class="tables">
+      <div class="table-scroll">
+        <table>
+          <caption>Single-arm robots</caption>
+          <thead>
+            <tr><th rowspan="2" class="left">Method</th><th colspan="3">LIBERO-Pro2.0 (simulation)</th><th colspan="3">AnchorZ (real Franka)</th></tr>
+            <tr><th>PSNR ↑</th><th>SSIM ↑</th><th>LPIPS ↓</th><th>PSNR ↑</th><th>SSIM ↑</th><th>LPIPS ↓</th></tr>
+          </thead>
+          <tbody>
+            <tr><td class="left">SyncWorld w/o calib.</td><td>28.87</td><td>0.907</td><td>0.047</td><td>25.31</td><td>0.871</td><td>0.118</td></tr>
+            <tr><td class="left">SyncWorld w/ calib.</td><td>29.14</td><td>0.914</td><td>0.043</td><td>–</td><td>–</td><td>–</td></tr>
+            <tr><td class="left">Recent-8</td><td>28.82</td><td>0.913</td><td>0.046</td><td>24.35</td><td>0.862</td><td>0.135</td></tr>
+            <tr><td class="left">Fixed-weight selection</td><td>29.48</td><td>0.916</td><td>0.038</td><td>26.09</td><td>0.879</td><td>0.103</td></tr>
+            <tr class="ours"><td class="left">DejaWorld (ours)</td><td>30.59</td><td>0.928</td><td>0.032</td><td>26.95</td><td>0.889</td><td>0.089</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="table-scroll">
+        <table>
+          <caption>Bimanual robots</caption>
+          <thead>
+            <tr><th rowspan="2" class="left">Method</th><th colspan="3">RoboDojo-Sim</th><th colspan="3">RoboDojo-Real</th></tr>
+            <tr><th>PSNR ↑</th><th>SSIM ↑</th><th>LPIPS ↓</th><th>PSNR ↑</th><th>SSIM ↑</th><th>LPIPS ↓</th></tr>
+          </thead>
+          <tbody>
+            <tr><td class="left">Recent-8</td><td>27.82</td><td>0.861</td><td>0.129</td><td>22.65</td><td>0.851</td><td>0.182</td></tr>
+            <tr><td class="left">Fixed-weight selection</td><td>29.32</td><td><b>0.879</b></td><td><b>0.095</b></td><td>23.52</td><td>0.864</td><td>0.148</td></tr>
+            <tr class="ours"><td class="left">DejaWorld (ours)</td><td>29.83</td><td class="plain">0.878</td><td class="plain">0.099</td><td>23.80</td><td>0.869</td><td>0.145</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+      <p class="note">SyncWorld w/ calib. has no result on AnchorZ: the set is a pre-recorded real-robot dataset, so the calibration sequence that SyncWorld needs cannot be collected for it.</p>
+    </details>
+  </div>
+</section>
+
+<section class="sec" id="experience">
+  <div class="wrap">
+    <div class="head">
+      <p class="eyebrow">Test-time scaling</p>
+      <h2 class="hx">Prediction Improves with Experience</h2>
+      <p class="sub">After training, the model is frozen. Every episode the robot finishes is added to its experience bank, and for each prediction the model reads just eight segments picked from that bank. A larger bank offers better segments to pick, so the prediction gets more accurate: from 0 to 64 episodes, PSNR rises at every step, on single-arm robots in simulation and the real world and on real dual-arm robots.</p>
+    </div>
+
+    <h3 class="first">One query, a growing bank</h3>
+    <p class="lede">A larger bank offers more experience for dynamics grounding, so each prediction can draw on more useful context.</p>
+    <div class="tabs" data-tabs="bank" role="tablist" aria-label="Bank growth cases">
+      <button role="tab" aria-selected="true" data-case="atombench_m7">Lift the red cube <small>real robot</small></button>
+      <button role="tab" aria-selected="false" data-case="robodojo_bowl">Carry the bowl <small>real, two arms</small></button>
+      <button role="tab" aria-selected="false" data-case="anchorz_cups">Stack the cups <small>real robot</small></button>
+      <button role="tab" aria-selected="false" data-case="libero_cabinet">Close the drawer <small>simulation</small></button>
+    </div>
+    <figure class="clip" id="clip-bank">
+      <div class="clip-scroll"><div class="clip-inner">
+      <div class="clip-head"><span><i>N</i> = 0</span><span><i>N</i> = 8</span><span class="ours"><i>N</i> = 64</span><span>Ground truth</span></div>
+      <video muted loop playsinline controls preload="metadata" width="1464" height="270" poster="static/videos/bank_atombench_m7.jpg" src="static/videos/bank_atombench_m7.mp4"></video>
+      </div></div>
+      <figcaption></figcaption>
+    </figure>
+
+    <h3>Prediction quality vs. bank size</h3>
+    <div class="split">
+      <figure class="plot">
+        <img src="static/images/scaling.png" width="1360" height="816" loading="lazy" alt="Line plot: averaged over three datasets, PSNR rises from 26.48 to 27.79 dB, SSIM rises from 0.859 to 0.875, and LPIPS falls from 0.081 to 0.062 as the bank grows from 0 to 64 episodes.">
+        <figcaption>Prediction quality against the number <i>N</i> of earlier episodes in the bank, averaged over the three datasets.</figcaption>
+      </figure>
+      <div>
+        <div class="table-scroll">
+          <table class="compact">
+            <caption>PSNR (dB) per dataset</caption>
+            <thead>
+              <tr><th class="left">Bank size <i>N</i></th><th>0</th><th>4</th><th>8</th><th>16</th><th>32</th><th>64</th></tr>
+            </thead>
+            <tbody>
+              <tr><td class="left">LIBERO-Pro2.0</td><td>28.90</td><td>29.64</td><td>29.71</td><td>29.99</td><td>30.13</td><td><b>30.23</b></td></tr>
+              <tr><td class="left">ManiSkill</td><td>25.56</td><td>26.09</td><td>26.20</td><td>26.31</td><td>26.45</td><td><b>26.50</b></td></tr>
+              <tr><td class="left">AnchorZ (real)</td><td>24.98</td><td>25.18</td><td>25.42</td><td>26.09</td><td>26.46</td><td><b>26.64</b></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="note">The bank grows from the query's own episode alone (<i>N</i> = 0) to 64 other episodes, and each larger bank contains every smaller one. The gains come from a larger pool of evidence to select from, not from a longer input or further training.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="sec band" id="planning">
+  <div class="wrap">
+    <div class="head">
+      <p class="eyebrow">Inference-time scaling</p>
+      <h2 class="hx">World Model as a Tool in an Agentic Framework</h2>
+      <p class="sub">A GPT policy calls DejaWorld as a tool. It previews up to three plans per decision and executes the one whose imagined outcome succeeds.</p>
+    </div>
+
+
+    <h3>Task success on LIBERO</h3>
+    <div class="split">
+      <div class="bars" role="img" aria-label="Task success rate on 70 LIBERO episodes: policy only 43%, Recent-8 preview 44%, DejaWorld preview 51%, simulator oracle preview 84%.">
+        <div class="bar-row"><span class="bar-label">Policy only</span><span class="bar-track"><span class="bar" style="width:43%"></span></span><span class="bar-value">43%</span></div>
+        <div class="bar-row"><span class="bar-label">+ Recent-8 preview</span><span class="bar-track"><span class="bar" style="width:44%"></span></span><span class="bar-value">44%</span></div>
+        <div class="bar-row ours"><span class="bar-label">+ DejaWorld preview (ours)</span><span class="bar-track"><span class="bar" style="width:51%"></span></span><span class="bar-value">51%</span></div>
+        <div class="bar-row oracle"><span class="bar-label">+ Simulator preview (oracle)</span><span class="bar-track"><span class="bar" style="width:84%"></span></span><span class="bar-value">84%</span></div>
+      </div>
+      <div>
+        <p>
+          With a simulator that shows the true outcome of a plan, the same policy reaches 84%. What it lacks most is foresight of how its actions change the scene.
+        </p>
+        <p>
+          A world model supplies part of this foresight without a simulator. Recent-8, the less accurate world model, leaves the policy where it is alone, while DejaWorld, which grounds its predictions in the experience bank, raises its success rate.
+        </p>
+      </div>
+    </div>
+
+    <figure class="loop-fig">
+      <a href="static/images/policy_loop.png"><img src="static/images/policy_loop.webp" width="2400" height="1042" loading="lazy" alt="Loop diagram: the policy sends a plan to the world model, which predicts its outcome with context read from the experience bank; the policy revises or executes the plan in the environment, and each observation is recorded into the bank."></a>
+    </figure>
+  </div>
+</section>
+
+</main>
+
+<footer class="footer">
+  <div class="wrap">DejaWorld project page.</div>
+</footer>
+
+<script src="static/recall/recall.js?v=f80f0068"></script>
+<script src="static/js/steps.js?v=5ca00f5b"></script>
+<script src="static/js/main.js?v=5e84df09"></script>
+</body>
+</html>
