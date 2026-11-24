@@ -5,6 +5,7 @@ Static page of "DejaWorld: Scaling Action-Conditioned World Models through In-Co
 - `index.html`: the page.
 - `static/css`, `static/js`: style and behaviour (case tabs, video controls, BibTeX copy button).
 - `static/images`, `static/videos`: figures and comparison clips.
+- `static/paper/DejaWorld.pdf`: the paper, linked from the "Paper" button until the arXiv version is up.
 
 ## Local preview
 
